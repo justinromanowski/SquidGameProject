@@ -1,18 +1,18 @@
 #include <Servo.h>
 #include <Wire.h>
 
-#define echoPin 2   // Echo Pin
-#define trigPin 24  // Trigger Pin
+#define echoPin 2       // Echo Pin for ultrasound
+#define trigPin 24      // Trigger Pin for ultrasound
 
 int buttonpin = 22;
 int buttonstate = 0;
 int servo1pin = 9;
 int servo2pin = 3;
-Servo servo1;
-Servo servo2;  //init servo2 (swinging arm)
+Servo servo1;             //attached to ultrasonic
+Servo servo2;             //swinging arm
 int lcd_state = 6;
-int gametimer = 60;  //use gametimer to count up to 60s
-int led_red = 44;
+int gametimer = 60;       //use gametimer to count up to 60s
+int led_red = 44;         //led pin
 int led_green = 46;
 int maximumRange = 50;    // Maximum range needed
 int minimumRange = 0;     // Minimum range needed
@@ -34,7 +34,7 @@ int e = 11;  // set digital pin 11 for segment e
 int f = 8;   // set digital pin 8 for segment f
 int g = 12;   // set digital pin 9 for segment g
 
-void digital_0(void)  // display number 5
+void digital_0(void)  // display number 0
 {
   unsigned char j;
   digitalWrite(a, HIGH);
@@ -107,8 +107,10 @@ void digital_6(void)  // display number 6
 //FUNCTIONS FOR GAME
 
 int movementChecker(int distance, int i) {
+  //distance = measured distance from ultrasonic sensor
+  //i is iterator from for loop
   if (playerposition == 0 && distance != -1) {
-    //if no player position is set & distance is valid reading, set the player's initial position
+    //if no player position has been set & distance is valid reading, set the player's initial position
     playerposition = distance;
     Serial.print("playerposition = ");
     Serial.println(playerposition);
@@ -119,7 +121,7 @@ int movementChecker(int distance, int i) {
       gamewin = true;
       return 20;  // to escape for loop & end game
     } else if (distance != -1) {
-    //if player's position changes by 5 or more, kill the game
+    //if player's position changes by 5 or more, kill the player & end the game
     if (distance >= (playerposition + 4) || (playerposition - 4) >= distance) {
       gametimer = 0;
       Serial.println("PLAYER SENSED, KILL");
@@ -130,7 +132,7 @@ int movementChecker(int distance, int i) {
 }
 
 int measDist() {
-  //check the distance
+  //check the distance from ultrasonic sensor
   digitalWrite(trigPin, LOW);
   delayMicroseconds(2);
   digitalWrite(trigPin, HIGH);
@@ -147,7 +149,6 @@ void countSeconds(int del, int red) {
   //arg "int del" is the amount of seconds you want to delay for
   for (int j = 1; j <= del; j++) {
     if (gametimer != 0) {
-      //using modulus will give us the time in a range 0-5
       int displayTime = (gametimer - 1) / 10 + 1;
       Serial.println(gametimer);
       //using switch statement, change the LCD to the proper reading
@@ -176,7 +177,6 @@ void countSeconds(int del, int red) {
       }
       //decrement gametimer by 1sec and delay for 1sec thru sensor
       gametimer -= 1;
-
 
       //IF RED LIGHT CHECK DISTANCE WHILE COUNTING
       //ELSE (GREEN LIGHT) THEN DELAY FOR 1S
@@ -212,7 +212,7 @@ void greenLight() {
   digitalWrite(led_green, HIGH);
   digitalWrite(led_red, LOW);
   //if less than 2 seconds are left in the game, only count remaining time)
-  //   else count for 2 seconds
+  //   else count for 2 seconds for green light
   if (gametimer - 2 <= 0) {
     countSeconds(gametimer, 0);
   } else {
@@ -228,7 +228,7 @@ void redLight() {
   digitalWrite(led_green, LOW);
   digitalWrite(led_red, HIGH);
   //if remaining time<3 secs, only count the remaining time
-  //   else count 3 seconds
+  //   else count 3 seconds for red light
   if (gametimer - 3 <= 0) {
     countSeconds(gametimer, 1);
   } else {
@@ -239,7 +239,7 @@ void redLight() {
 void gameReset() {
   digital_0();
   Serial.println("Game completed");
-  //different end-game tones for win/loss
+  //different tones from buzzer depending on win or loss
   if (gamewin == true){
     for(int i=700;i<1000;i+=50){
       tone(buzzer,i);
@@ -259,6 +259,7 @@ void gameReset() {
     delay(3000);
     servo2.write(90);
   }
+  //reset LEDs & buzzer for next game
   digitalWrite(led_green, HIGH);
   digitalWrite(led_red, HIGH);
   noTone(buzzer);
@@ -267,7 +268,7 @@ void gameReset() {
 void gameFlow() {
   gametimer = 60;
   Serial.println("Game is starting..");
-  //loop through green and red light cycles while remaining time in game greater than 0
+  //loop through green and red light cycles until gametimer is 0
   do {
     greenLight();
     redLight();
@@ -302,7 +303,7 @@ void setup() {
 
 void loop() {
   //read button state forever while powered
-  //if button is high, then start the game
+  //if button is pressed, then start the game
   buttonstate = digitalRead(buttonpin);
   if (buttonstate == 1) {
     gameFlow();
